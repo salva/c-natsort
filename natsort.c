@@ -45,18 +45,15 @@ rcmp(const void *p1, const void *p2) {
     return strcmp(* (char * const *) p2, * (char * const *) p1);
 }
 
-static int
-natcmp(const void *p1, const void *p2) {
-    char *s1 = *(char * const *) p1;
-    char *s2 = *(char * const *) p2;
+int
+natcmp(const char *s1, const char *s2) {
     char c1, c2;
-
     while (1) {
         c1 = *(s1++);
         c2 = *(s2++);
         if ((c1 <= '9') && (c2 <= '9') && (c1 >= '0') && (c2 >= '0')) {
             size_t l1, l2;
-            char *e1, *e2;
+            const char *e1, *e2;
             while (c1 == '0') c1 = *(s1++);
             while (c2 == '0') c2 = *(s2++);
             for (e1 = s1; (c1 >= '0') && (c1 <= '9'); c1 = *(e1++));
@@ -78,9 +75,16 @@ natcmp(const void *p1, const void *p2) {
 }
 
 static int
-natcmp_alt(const void *p1, const void *p2) {
-    char *s1 = *(char * const *) p1;
-    char *s2 = *(char * const *) p2;
+natcmpsort(const void *p1, const void *p2) {
+    const char *s1 = *(char * const *) p1;
+    const char *s2 = *(char * const *) p2;
+    natcmp(s1, s2);
+}
+
+int
+natcmp_alt(const char *s1, const char *s2) {
+    const char *start1 = s1;
+    const char *start2 = s2;
     char c1, c2;
     while (1) {
         char c1 = *(s1++);
@@ -88,14 +92,41 @@ natcmp_alt(const void *p1, const void *p2) {
         if (c1 == c2) { 
             if (c1 == '\0') return 0;
         }
-        if ((c1 <= '9') && (c2 <= '9') && (c1 >= '0') && (c2 >= '0')) {
-            if (c1 == '0') {
-                char *b1 = *(char * const *) p1;
-                char *p = s1 - 2;
-                //while ((p >= b1)
+        else {
+            if ((c1 <= '9') && (c2 <= '9') && (c1 >= '0') && (c2 >= '0')) {
+                if (c1 == '0') {
+                    const char *p = s1 - 2;
+                    while ((p >= start1) && (*p == '0')) p--;
+                    if ((p < start1) || ((*p < '0') && (*p > '9')))
+                        while ((c1 = *(s1++)) == '0');
+                    if ((c1 < '0') || (c1 > '9'))
+                        return -1;
+                }
+                else if (c2 == '0') {
+                    const char *p = s2 - 2;
+                    while ((p >= start2) && (*p == '0')) p--;
+                    if ((p < start2) || ((*p < '0') && (*p > '9')))
+                        while ((c2 = *(s2++)) == '0');
+                    if ((c2 < '0') || (c2 > '9'))
+                        return 1;
+                }
+                while (1) {
+                    char d1 = *(s1++);
+                    char d2 = *(s2++);
+                    if ((d1 < '0') || (d1 > '9')) return ((c1 > c2) && ((d2 < '0') || (d2 > '9')) ? 1 : -1);
+                    if ((d2 < '0') || (d2 > '9')) return 1;
+                }
             }
+            return (c1 < c2 ? -1 : 1);
         }
     }
+}
+
+static int
+natcmpsort_alt(const void *p1, const void *p2) {
+    const char *s1 = *(char * const *) p1;
+    const char *s2 = *(char * const *) p2;
+    return natcmp_alt(s1, s2);
 }
 
 int
@@ -115,7 +146,7 @@ natsort(char **base, size_t nmemb, int flags) {
 
     if (simple) {
         if (debug) fprintf(stderr, "using natcmp\n");
-        qsort(base, nmemb, sizeof(char *), &natcmp);
+        qsort(base, nmemb, sizeof(char *), (alt ? &natcmpsort_alt : &natcmpsort));
         return 0;
     }
 

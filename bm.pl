@@ -7,10 +7,10 @@ use Benchmark qw(cmpthese);
 
 $| = 1;
 
-my $data = 'test.data';
+my $data = 'test-2.data';
 my $bin = './natsort';
 
-my @opts = ('-a', '-A', '-c', '');
+my @opts = ('-a', '-A', '-c', '-c -a', '');
 #my @opts = ('-c', '');
 
 my %sub;
@@ -18,10 +18,10 @@ for my $opt (@opts) {
     my @args = (grep(length $_, split /\s+/, $opt), '-q', $data);
     $sub{$opt} = sub {
         system $bin, @args;
-        print '.';
+        #print '.';
     };
 }
 
-cmpthese(5, \%sub);
+cmpthese(8, \%sub);
 
 
